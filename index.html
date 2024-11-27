@@ -1,0 +1,97 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Price Comparison</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script> <!-- Include Chart.js -->
+</head>
+<body>
+    <div class="container">
+        <h1>Interactive Price Comparison</h1>
+        <form method="POST" class="search-form">
+            <label for="product">Enter Product Name:</label>
+            <input type="text" id="product" name="product" required>
+            <button type="submit">Search</button>
+        </form>
+
+        {% if data %}
+        <h2>Results</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Site</th>
+                    <th>Title</th>
+                    <th>Price</th>
+                    <th>Availability</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in data %}
+                <tr>
+                    <td>{{ item.site }}</td>
+                    <td>{{ item.title }}</td>
+                    <td>{{ item.price }}</td>
+                    <td>{{ item.availability }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <h2>Price Comparison Chart</h2>
+        <canvas id="priceChart"></canvas>
+        
+        <script>
+            // Prepare data for Chart.js
+            const labels = {{ data | map(attribute='title') | list | tojson }};
+            const amazonPrices = {{ data | selectattr('site', 'equalto', 'Amazon') | map(attribute='price') | list | tojson }};
+            const ebayPrices = {{ data | selectattr('site', 'equalto', 'eBay') | map(attribute='price') | list | tojson }};
+
+            // Convert price strings to numbers
+            function parsePrice(price) {
+                return parseFloat(price.replace(/[^0-9.]/g, '') || 0);
+            }
+
+            const amazonParsed = amazonPrices.map(parsePrice);
+            const ebayParsed = ebayPrices.map(parsePrice);
+
+            // Create the bar chart
+            const ctx = document.getElementById('priceChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels.slice(0, amazonParsed.length), // Limit to the number of items available
+                    datasets: [
+                        {
+                            label: 'Amazon Prices',
+                            data: amazonParsed,
+                            backgroundColor: 'rgba(54, 162, 235, 0.6)',
+                        },
+                        {
+                            label: 'eBay Prices',
+                            data: ebayParsed,
+                            backgroundColor: 'rgba(255, 99, 132, 0.6)',
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        },
+                        title: {
+                            display: true,
+                            text: 'Product Price Comparison'
+                        }
+                    }
+                }
+            });
+        </script>
+        {% endif %}
+    </div>
+</body>
+</html>
